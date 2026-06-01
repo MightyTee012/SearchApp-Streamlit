@@ -2,7 +2,6 @@ import streamlit as st
 import base64
 import os
 
-# --- DESIGN ICON REGISTRY ---
 # Kept as emojis STRICTLY to keep st.set_page_config() from crashing at startup
 ICONS = {
     "database": "🫥",
@@ -49,13 +48,12 @@ def get_icon_html(icon_name, size=32):
     if b64_str:
         return f'<img src="data:image/gif;base64,{b64_str}" width="{size}" style="vertical-align: middle; margin-right: 10px; margin-bottom: 4px;">'
     
-    # Elegant emoji fallback if the .gif file isn't in the folder
     return f"<span style='font-size: {size}px; margin-right: 10px;'>{ICONS.get(icon_name, '')}</span>"
 
 def inject_modern_css():
     """Injects layout overrides with a guaranteed web-safe background image fallback."""
     
-    # Check if you have a local background file (supports jpg, png, or gif)
+
     bg_local = get_cached_base64("background.jpg") or get_cached_base64("background.gif")
     
     if bg_local:
@@ -63,13 +61,13 @@ def inject_modern_css():
         bg_url = f"data:image/jpeg;base64,{bg_local}"
         bg_url_1 = f"data:image/gif;base64,{bg_local}"
     else:
-        # 🚀 THE BACKGROUND FIX: Fast-loading, high-quality abstract background from the web
+        # THE BACKGROUND FIX
         bg_url = "https://plus.unsplash.com/premium_vector-1719816838907-8b4304af21e6?q=80&w=1316&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
         bg_url_1 = "https://media.istockphoto.com/id/1147249349/vector/beagle-in-action-seamless-pattern.jpg?s=612x612&w=0&k=20&c=vyFNQzFKxojRckU584PDEXLZIVNbDbQa0cUQRwXiaJA="
         
     st.markdown(f"""
         <style>
-        /* 1. GLOBAL SCROLLBAR OVERHAUL */
+        /*GLOBAL SCROLLBAR OVERHAUL */
         ::-webkit-scrollbar {{
             width: 80px !important;       
             height: 80px !important;      
@@ -91,7 +89,7 @@ def inject_modern_css():
             height: 150px !important;
         }}
 
-        /* 2. FIXED LAYOUT WITH BACKGROUND IMAGE */
+        /*FIXED LAYOUT WITH BACKGROUND IMAGE */
         html, body, .stApp, [data-testid="stAppViewContainer"] {{
             background-image: linear-gradient(rgba(230, 240, 250, 0.85), rgba(230, 240, 250, 0.85)), 
                               url('{bg_url}') !important;
@@ -103,7 +101,7 @@ def inject_modern_css():
             overflow-x: hidden !important;
         }}
         
-        /* 3. FIXED: TRUE EDGE-TO-EDGE ULTRAPLOT DATA TABLE OVERRIDE */
+        /*FIXED: TRUE EDGE-TO-EDGE ULTRAPLOT DATA TABLE OVERRIDE */
         .main .block-container {{
             max-width: 100% !important;      
             width: 100% !important;       
@@ -127,7 +125,7 @@ def inject_modern_css():
             width: 100% !important;
         }}
         
-        /* 4. SIDEBAR COMPRESSION & UNIQUE BACKGROUND IMAGE WINDOW */
+        /*SIDEBAR COMPRESSION & UNIQUE BACKGROUND IMAGE WINDOW */
         [data-testid="stSidebar"] {{
             background-image: linear-gradient(rgba(203, 220, 235, 0.88), rgba(203, 220, 235, 0.88)), 
                               url('{bg_url_1}') !important;
@@ -183,7 +181,7 @@ def inject_modern_css():
             border-color: #0A1931 !important; /* blue */
         }}
 
-        /* 5. BASELINE READABILITY */
+        /*BASELINE READABILITY */
         html, body, .stApp {{
             font-size: 18px !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -196,7 +194,7 @@ def inject_modern_css():
             color: #0A1931 !important;  /* blue */
         }}
 
-        /* 6. SIDEBAR CARDS */
+        /*SIDEBAR CARDS */
         .stExpander {{
             background-color: #ceebe0 !important; /* green */
             border: 2px solid #0A1931 !important; /* blue */
@@ -231,7 +229,7 @@ def inject_modern_css():
             margin-bottom: -0.6rem;
         }}
         
-        /* 7. STATUS BAR */
+        /*STATUS BAR */
         .status-bar {{
             background-color: #CBDCEB !important; /* light-blue */
             padding: 0.6rem 1rem;
@@ -244,7 +242,7 @@ def inject_modern_css():
             border: 2px solid #0A1931 !important;
         }}
 
-/* 3. TRUE EDGE-TO-EDGE & FIXED HEIGHT BLOCK OVERRIDE */
+        /* TRUE EDGE-TO-EDGE & FIXED HEIGHT BLOCK OVERRIDE */
         .main .block-container {{
             max-width: 100% !important;      
             width: 100% !important;       
@@ -266,7 +264,7 @@ def inject_modern_css():
             flex-direction: column;
         }}
         
-        /* 8. LIVELY DATA TABLE & SCROLL LOCK OVERRIDE */
+        /* LIVELY DATA TABLE & SCROLL LOCK OVERRIDE */
         [data-testid="stDataFrame"] {{
             background-color: rgba(255, 255, 255, 0.3) !important;
             border-radius: 10px !important;
