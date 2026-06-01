@@ -7,21 +7,17 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
-# Force Windows to use the Selector Event Loop to prevent Proactor crashes
 if sys.platform == 'win32':
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# --- ABSOLUTE PATH FORCE ENGINE ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# Import style file module safely
 import AppStyle as style
 
-# --- INIT PAGE CONFIG ---
 st.set_page_config(
     page_title="Team Permitting",
     page_icon=style.ICONS["database"],
@@ -29,10 +25,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply central design rules
 style.inject_modern_css()
 
-# --- FUNCTION REVISIONS (BUTTON & UTILITIES) ---
 def clear_global_search():
     """Wipes the text bar back to empty safely from the global state layer."""
     st.session_state.global_search_input = ""
@@ -65,35 +59,33 @@ def load_large_data(file):
             df = pd.read_excel(file, engine='openpyxl')
 
         for col in df.columns:
-            # 1. Clean the incoming data row into clean strings
+            # 1. incoming data row into clean strings
             raw_series = df[col].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
             
             if raw_series.replace(['nan', '', '<NA>'], pd.NA).dropna().empty:
                 df[col] = ""
                 continue
 
-            # Create a blank array to test parsing on this column
             parsed_dates = pd.Series(pd.NaT, index=df.index)
             col_lower = col.lower()
             
-            # 🚀 NEW DIRECT BYPASS HOOK: Detect core target column keywords explicitly
+            #Detect core target column keywords explicitly
             is_target_date_column = any(k in col_lower for k in ['date', 'time', 'prepared', 'validity', 'valid'])
 
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=UserWarning)
                 
-                # STEP A: Try parsing as standard string dates
+                # STEP A
                 non_numeric_mask = ~raw_series.str.isnumeric() & (raw_series != 'nan') & (raw_series != '')
                 if non_numeric_mask.any():
                     # dayfirst=False keeps standard MM/DD/YYYY or YYYY/MM/DD routing intact
                     parsed_dates[non_numeric_mask] = pd.to_datetime(raw_series[non_numeric_mask], errors='coerce')
 
-                # STEP B: Try parsing as Excel numeric date serials
+                # STEP B
                 numeric_mask = raw_series.str.isnumeric() & (raw_series != '')
                 if numeric_mask.any():
                     numeric_days = pd.to_numeric(raw_series[numeric_mask], errors='coerce')
                     
-                    # 💡 TRACKING PROTECTION WIDENED: 
                     # If it's a known date column title, we open the safety bounds wide open (1 to 100,000)
                     lower_bound = 1 if is_target_date_column else 36526
                     valid_serial_mask = numeric_days.between(lower_bound, 100000)
@@ -106,22 +98,18 @@ def load_large_data(file):
                             errors='coerce'
                         )
 
-            # 🎯 THE DECISION LAYER:
+
             valid_dates_count = parsed_dates.notna().sum()
             
-            # Force conversion if it contains dates OR if it's explicitly named as a target date column
             if valid_dates_count > 0 or is_target_date_column:
                 valid_dates_mask = parsed_dates.notna()
                 fallback_series = df[col].astype(str)
                 
-                # Format successfully parsed fields
                 if valid_dates_mask.any():
                     df.loc[valid_dates_mask, col] = parsed_dates[valid_dates_mask].dt.strftime('%B %d, %Y')
                 
-                # Keep original string states if parsing completely failed on a weird text row
                 df.loc[~valid_dates_mask, col] = fallback_series[~valid_dates_mask]
                 
-                # Final system cleanups
                 df[col] = df[col].astype(str).replace(['nan', 'NaT', '<NA>', 'NaT/NaT'], '')
             else:
                 df[col] = df[col].astype(str).replace(['nan', '<NA>'], '')
@@ -133,7 +121,7 @@ def load_large_data(file):
     
 # --- SIDEBAR CONTROL PANEL ---
 with st.sidebar:
-# 🌟 NEW ANIMATED SIDEBAR TITLE WITH TRANSPARENCY FIX 🌟
+# ANIMATED SIDEBAR TITLE WITH TRANSPARENCY
     st.markdown(
         f"""
         <h1 style="display: flex; align-items: center; gap: 10px; margin-top: 0px; margin-bottom: 15px;">
@@ -166,11 +154,9 @@ with st.sidebar:
         df = load_large_data(uploaded_file)
         
         if df is not None:
-            # Initialize the multiselect session state if it doesn't exist yet
             if "visible_cols_key" not in st.session_state:
                 st.session_state.visible_cols_key = df.columns.tolist()
 
-            # 2. Collapsible Column Picker
             with st.expander(f"{style.ICONS['visible']} 2. SARAHAN NG COLUMNS ", expanded=False):
                 col_opt_buttons = st.columns(2)
                 with col_opt_buttons[0]:
@@ -188,13 +174,12 @@ with st.sidebar:
                     key="visible_cols_key"
                 )
             
-            # Safety fallback to prevent a completely empty dataframe view
             if not visible_columns:
                 visible_columns = [df.columns.tolist()[0]]
             
             st.markdown("---")
 
-            # 3. Fuzzy Global Search
+            # 3. Global Search
             with st.expander(f"{style.ICONS['search']} 3. HANAPAN", expanded=True):    
                 global_search = st.text_input(
                     "Global Filter (Ignores Symbols/Spaces)", 
@@ -241,13 +226,13 @@ if uploaded_file is not None and 'df' in locals() and df is not None:
             col_mask = fuzzy_contains(filtered_df[col_name], search_val)
             filtered_df = filtered_df[col_mask]
 
-          # 🚀 1. EXTRACTION FIX: Get the uploaded file name
+          # EXTRACTION : Get the uploaded file name
     import os
     clean_title = os.path.splitext(uploaded_file.name)[0]
 
     st.markdown(f'<div style="display: flex; align-items: center; gap: 15px; height: 100px; margin-bottom: 15px; margin-top: -20px;"><img src="https://i.pinimg.com/originals/c5/ee/51/c5ee5152fd8575cd966fa258addca1a1.gif" style="height: 100px; width: auto; image-rendering: pixelated; mix-blend-mode: multiply; display: block;"><span style="font-size: 28px; font-weight: 700; color: #0A1931; font-family: \'Source Sans Pro\', sans-serif;">{clean_title}</span></div>', unsafe_allow_html=True)
     
-         # 2. Your Locked Layout CSS Stylesheet Injection
+         # Your Locked Layout CSS Stylesheet Injection
     st.markdown("""
             <style>
                 /* Force the main container block to span edge-to-edge */
@@ -264,7 +249,7 @@ if uploaded_file is not None and 'df' in locals() and df is not None:
                 }
             </style>
         """, unsafe_allow_html=True)
-    # 3. THE CONTAINER FIXED WRAPPER
+    # CONTAINER WRAPPER
 
     with st.container():
         st.dataframe(
