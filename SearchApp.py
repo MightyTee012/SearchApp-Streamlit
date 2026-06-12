@@ -6,37 +6,37 @@ import re
 from io import BytesIO
 import pandas as pd
 import streamlit as st
-from AppStyle import inject_modern_css
-from Security import check_password
 
-inject_modern_css()
+# --- 1. ABSOLUTE PATH FORCE ENGINE ---
+# (Must run at the very top so Linux servers can find your local files)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
-if not check_password():
-    st.stop()  # 🛑 HALT! Don't run anything below this line if login fails
-
-# Force Windows to use the Selector Event Loop to prevent Proactor crashes
+# Force Windows selector loop safety
 if sys.platform == 'win32':
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# --- ABSOLUTE PATH FORCE ENGINE ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
-
-# Import style file module safely
+# Now we safely import your custom helper files
 import AppStyle as style
+from Security import check_password
 
-# --- INIT PAGE CONFIG ---
+# --- 2. INIT PAGE CONFIG ---
+# (CRITICAL: This must be the absolute first Streamlit command executed!)
 st.set_page_config(
     page_title="Team Permitting",
-    page_icon=style.ICONS["database"],
+    page_icon="📊", # Safe fallback icon
     layout="wide",
     initial_sidebar_state="collapsed" 
 )
 
-# Apply central design rules
+# --- 3. RUN THE SECURITY CHECK FIRST ---
+if not check_password():
+    st.stop()  # 🛑 HALT! Don't run anything below if login fails
+
+# --- 4. APPLY CENTRAL DESIGN RULES AFTER LOGIN ---
 style.inject_modern_css()
 
 # --- HIGH-DENSITY SCREEN OPTIMIZER ---
@@ -91,7 +91,6 @@ def load_large_data(file):
             df = pd.read_excel(file, engine='openpyxl')
 
         for col in df.columns:
-            # 🌟 FIX 1: If Pandas natively auto-detects an Excel date column, format it immediately and lock it as text
             if pd.api.types.is_datetime64_any_dtype(df[col]):
                 df[col] = df[col].dt.strftime('%B %d, %Y').fillna('').astype(str)
                 continue
@@ -126,7 +125,6 @@ def load_large_data(file):
                 valid_dates_mask = parsed_dates.notna()
                 fallback_series = df[col].astype(str)
                 
-                # 🌟 FIX 2: Explicitly force the column to plain text format before converting mixed text dates
                 df[col] = df[col].astype(str)
                 if valid_dates_mask.any():
                     df.loc[valid_dates_mask, col] = parsed_dates[valid_dates_mask].dt.strftime('%B %d, %Y')
@@ -162,7 +160,7 @@ with side_control_panel:
     ])
     
     with tab_setup:
-        st.markdown(f"### {style.ICONS['file']} Setup Deck")
+        st.markdown("### 📂 Setup Deck")
         raw_upload = st.file_uploader(
             "Drop workbook matrix:", 
             type=["csv", "xlsx"],
@@ -193,7 +191,7 @@ if active_file is not None:
 
         with side_control_panel:
             with tab_setup:
-                st.markdown(f"### {style.ICONS['visible']} Display Columns")
+                st.markdown("### 👁️ Display Columns")
                 c_b1, c_b2 = st.columns(2)
                 with c_b1:
                     if st.button("All", key="all_t1", use_container_width=True):
@@ -211,46 +209,41 @@ if active_file is not None:
                     label_visibility="collapsed"
                 )
 
-            visible_columns = st.session_state.visible_cols_widget
-            filtered_df = df[visible_columns].copy()
+        visible_columns = st.session_state.visible_cols_widget
+        filtered_df = df[visible_columns].copy()
 
-            # 🛠️ SPEED OPTIMIZATION: Wrapped inputs inside a unified processing form
-            with tab_search:
-                st.markdown(f"### {style.ICONS['search']} Master Filters")
-                st.button("❌ CLEAR ", on_click=clear_all_searches_and_filters, key="reset_search_deck_btn", use_container_width=True)
-                st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+        with tab_search:
+            st.markdown("### 🔍 Master Filters")
+            st.button("❌ CLEAR ", on_click=clear_all_searches_and_filters, key="reset_search_deck_btn", use_container_width=True)
+            st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+            
+            with st.form(key="optimized_search_form", border=False):
+                st.text_input(
+                    "Main Search Bar:", 
+                    placeholder="🔍 Search...",
+                    key="global_search_input"
+                )
+                st.markdown("---")
+                st.markdown("### ⚙️ Column Sub-Filters")
                 
-                # Form Container locks the entry state until you submit
-                with st.form(key="optimized_search_form", border=False):
-                    
-                    st.text_input(
-                        "Main Search Bar:", 
-                        placeholder="🔍 Search...",
-                        key="global_search_input"
-                    )
-                    st.markdown("---")
-                    st.markdown(f"### {style.ICONS['filter']} Column Sub-Filters")
-                    
-                    with st.container(height=360, border=False):
-                        for col_name in visible_columns:
-                            st.text_input(
-                                f"{col_name}", 
-                                key=f"sidebar_filter_{col_name}",
-                                placeholder=f"🔎 {col_name}..."
-                            )
-                    
-                    # The execution lock switch button
-                    st.form_submit_button(label="⚡ RUN SEARCH FILTERS", use_container_width=True)
+                with st.container(height=360, border=False):
+                    for col_name in visible_columns:
+                        st.text_input(
+                            f"{col_name}", 
+                            key=f"sidebar_filter_{col_name}",
+                            placeholder=f"🔎 {col_name}..."
+                        )
+                
+                st.form_submit_button(label="⚡ RUN SEARCH FILTERS", use_container_width=True)
 
-            with tab_download:
-                st.markdown(f"### {style.ICONS['download']} Export Deck")
-                def convert_df_to_excel(df_to_save):
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_to_save.to_excel(writer, index=False, sheet_name='Filtered_View')
-                    return output.getvalue()
+        with tab_download:
+            st.markdown("### 💾 Export Deck")
+            def convert_df_to_excel(df_to_save):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df_to_save.to_excel(writer, index=False, sheet_name='Filtered_View')
+                return output.getvalue()
 
-        # --- DATA MUTATION EXECUTION ---
         if st.session_state.get("global_search_input", ""):
             search_query = st.session_state.global_search_input
             masks = [fuzzy_contains(filtered_df[col], search_query) for col in visible_columns]
@@ -277,7 +270,6 @@ if active_file is not None:
                 else:
                     st.warning("No metrics match your search parameters to compile.")
 
-        # Stable Display Table Output Window
         with main_data_window:
             clean_title = os.path.splitext(active_file.name)[0]
             st.markdown(f'<div style="display: flex; align-items: center; gap: 5px; margin-top: -15px; margin-bottom: 2px;"><img src="https://i.pinimg.com/originals/c5/ee/51/c5ee5152fd8575cd966fa258addca1a1.gif" style="height: 100px; width: auto; image-rendering: pixelated; mix-blend-mode: multiply;"><span style="font-size: 30px; font-weight: 700; color: #0A1931;">{clean_title}</span></div>', unsafe_allow_html=True)
